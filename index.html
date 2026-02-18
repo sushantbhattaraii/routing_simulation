@@ -100,21 +100,42 @@
       white-space: nowrap;
     }
 
-    /* Overlay stats panel */
-    #statsPanel{
+    /* Bottom-center dock, side-by-side */
+    #statsDock{
     position: fixed;
-    right: 12px;
-    top: 86px; /* below the topbar; adjust if needed */
-    width: min(420px, calc(100vw - 24px));
-    max-height: calc(100vh - 110px);
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    z-index: 20;
+    max-width: calc(100vw - 24px);
+    }
+
+    /* Each panel box */
+    .miniPanel{
     background: rgba(255,255,255,0.96);
     border: 1px solid var(--stroke);
     border-radius: 16px;
     box-shadow: var(--shadow);
     padding: 12px 12px 10px;
+    width: min(520px, calc((100vw - 36px)/2));
+    max-height: 34vh;      /* keeps sliders visible */
     overflow: auto;
-    z-index: 20;
     }
+
+    /* On small screens, stack them */
+    @media (max-width: 900px){
+    #statsDock{
+        flex-direction: column;
+        align-items: center;
+    }
+    .miniPanel{
+        width: min(520px, calc(100vw - 24px));
+    }
+    }
+
 
     .panelTitle{
     font-size: 13px;
@@ -175,15 +196,20 @@
   <div id="wrap">
     <canvas id="c"></canvas>
     <!-- Visible stats + table panel -->
-    <div id="statsPanel">
-    <div class="panelTitle">Server movement</div>
-    <div id="distanceList" class="distanceList"></div>
+    <div id="statsDock">
+        <div class="miniPanel">
+            <div class="panelTitle">Server movement</div>
+            <div id="distanceList" class="distanceList"></div>
+        </div>
 
-    <div class="panelTitle" style="margin-top:12px;">Per-server time-step table</div>
-    <div class="tableWrap">
-        <table id="stateTable"></table>
-    </div>
-    </div>
+        <div class="miniPanel">
+            <div class="panelTitle">Per-server time-step table</div>
+            <div class="tableWrap">
+            <table id="stateTable"></table>
+            </div>
+        </div>
+        </div>
+
   </div>
 
   <script>
