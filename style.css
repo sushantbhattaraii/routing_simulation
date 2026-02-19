@@ -74,17 +74,31 @@ button:hover { filter: brightness(0.98); }
 .muted { color: var(--muted); }
 
 /* Canvas should cover the whole webpage horizontally */
-#wrap {
-    width: 100%;
-    padding: 0;
+#wrap{
+  width: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;           /* no side padding */
 }
 
-canvas {
-    display: block;
-    width: 100vw;          /* cover whole page horizontally */
-    height: calc(100vh - 64px);
-    background: transparent;
+#c{
+  display:block;
+  width: 100vw;
+  height: 62vh;  /* slider area */
+  background: #fff;
 }
+
+#pathCanvas{
+  display:block;
+  width: 100vw;
+  height: 240px;          /* JS will override this dynamically */
+  background: #fff;
+  border-top: 1px solid rgba(209,213,219,0.7);
+}
+
+
 
 .hint {
     margin-left: auto;
@@ -95,15 +109,12 @@ canvas {
 
 /* Bottom-center dock, side-by-side */
 #statsDock{
-position: fixed;
-left: 50%;
-bottom: 12px;
-transform: translateX(-50%);
-display: flex;
-gap: 12px;
-align-items: flex-end;
-z-index: 20;
-max-width: calc(100vw - 24px);
+  display:flex;
+  justify-content:center;
+  gap: 12px;
+  padding: 0 12px 14px;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 /* Each panel box */

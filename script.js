@@ -12,6 +12,9 @@ function tickCount() {
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
+const pathCanvas = document.getElementById('pathCanvas');
+const pathCtx = pathCanvas.getContext('2d');
+
 const kInput = document.getElementById('kInput');
 const applyBtn = document.getElementById('applyBtn');
 
@@ -178,21 +181,43 @@ renderDistances();
 renderTable();
 }
 
+function sizeCanvas(el, context, cssW, cssH) {
+  const dpr = window.devicePixelRatio || 1;
+  el.style.width = cssW + 'px';
+  el.style.height = cssH + 'px';
+  el.width = Math.floor(cssW * dpr);
+  el.height = Math.floor(cssH * dpr);
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
 
 // Canvas sizing for crisp rendering
 function resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
+  const topbarH = document.querySelector('.topbar').getBoundingClientRect().height;
+
+  // Use the CSS heights you set in CSS (vh), just read actual rendered height:
+    // const wrapEl = document.getElementById('wrap');
+    // const cssW = Math.floor(wrapEl.getBoundingClientRect().width);
     const cssW = Math.floor(window.innerWidth);
-    const cssH = Math.floor(window.innerHeight - document.querySelector('.topbar').getBoundingClientRect().height);
+    const mainCssH = Math.floor(document.getElementById('c').getBoundingClientRect().height);
+    // Dynamically size the path diagram to fit all servers
+    const k = servers.length;
+    const topPad = 70;           // axis + margins
+    const bandMinH = 120;   // was 52 → more vertical room per server path
+    const gap = 28;         // was 18 → more separation between server bands
 
-    canvas.style.width = cssW + 'px';
-    canvas.style.height = cssH + 'px';
+    const desired = topPad + k * bandMinH + Math.max(0, k - 1) * gap;
 
-    canvas.width = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
+    // Allow the path canvas to grow taller so bands actually get that space
+    const maxH = Math.floor(window.innerHeight * 0.80); // was 0.55
+    const pathCssH = clamp(desired, 220, maxH);
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
+    // IMPORTANT: set CSS height BEFORE measuring/allocating pixels
+    pathCanvas.style.height = pathCssH + 'px';
+  sizeCanvas(canvas, ctx, cssW, mainCssH);
+  sizeCanvas(pathCanvas, pathCtx, cssW, pathCssH);
+
+  draw();
+  drawPaths();
 }
 
 // ======= Drawing =======
@@ -325,6 +350,117 @@ function roundRect(x, y, w, h, r) {
     ctx.arcTo(x, y + h, x, y, rr);
     ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
+}
+
+function drawPaths() {
+  const w = pathCanvas.width / (window.devicePixelRatio || 1);
+  const h = pathCanvas.height / (window.devicePixelRatio || 1);
+
+  // Clear background
+  pathCtx.clearRect(0, 0, w, h);
+  pathCtx.fillStyle = '#fff';
+  pathCtx.fillRect(0, 0, w, h);
+
+  // Axis (reuse same horizontal mapping)
+  const x0 = layout.padL;
+  const x1 = w - layout.padR;
+  const top = 25;
+
+  // top axis line
+  pathCtx.strokeStyle = '#111827';
+  pathCtx.lineWidth = 2;
+  pathCtx.beginPath();
+  pathCtx.moveTo(x0, top);
+  pathCtx.lineTo(x1, top);
+  pathCtx.stroke();
+
+  // integer labels 0..18
+  // ticks every alpha (= tickStep), labels only at integers
+    pathCtx.fillStyle = '#111827';
+    pathCtx.font = '12px system-ui';
+    pathCtx.textAlign = 'center';
+    pathCtx.textBaseline = 'bottom';
+
+    const steps = tickCount(); // number of alpha steps from 0 to 18
+    for (let i = 0; i <= steps; i++) {
+    const t = T_MIN + i * tickStep; // t advances by alpha
+    const u = (t - T_MIN) / (T_MAX - T_MIN);
+    const x = x0 + u * (x1 - x0);
+
+    const isInteger = Math.abs(t - Math.round(t)) < 1e-9;
+    const len = isInteger ? 10 : 5; // major vs minor tick length
+
+    pathCtx.strokeStyle = '#111827';
+    pathCtx.lineWidth = 1;
+    pathCtx.beginPath();
+    pathCtx.moveTo(x, top);
+    pathCtx.lineTo(x, top - len);
+    pathCtx.stroke();
+
+    if (isInteger) {
+        pathCtx.fillText(String(Math.round(t)), x, top - 12);
+    }
+}
+
+  // Draw each server path in its own band
+  const k = servers.length;
+  const bandGap = 28;
+  const bandH = Math.max(40, Math.floor((h - top - 20 - (k - 1) * bandGap) / Math.max(k, 1)));
+
+  for (let i = 0; i < k; i++) {
+    const bandTop = top + 18 + i * (bandH + bandGap);
+    const bandBottom = bandTop + bandH;
+
+    // label
+    pathCtx.textAlign = 'right';
+    pathCtx.textBaseline = 'top';
+    pathCtx.fillStyle = '#111827';
+    pathCtx.font = '12px system-ui';
+    pathCtx.fillText(`Server ${i + 1}`, x0 - 12, bandTop);
+
+    // y-axis spine for this band
+    pathCtx.strokeStyle = 'rgba(17,24,39,0.35)';
+    pathCtx.lineWidth = 1;
+    pathCtx.beginPath();
+    pathCtx.moveTo(x0, bandTop);
+    pathCtx.lineTo(x0, bandBottom);
+    pathCtx.stroke();
+
+    // points = [0, ...history]
+    const pts = [0, ...(moveHistory[i] || [])];
+    const n = pts.length - 1; // number of timesteps logged
+
+    // If no movement yet, draw a dot at origin
+    if (n <= 0) {
+      pathCtx.fillStyle = servers[i].color;
+      pathCtx.beginPath();
+      pathCtx.arc(x0, bandTop + 2, 3, 0, Math.PI * 2);
+      pathCtx.fill();
+      continue;
+    }
+
+    // scale time down the band
+    const yForStep = (stepIdx) => {
+      // stepIdx: 0..n (0 is start at time 0)
+      return bandTop + (stepIdx / n) * (bandH - 4);
+    };
+
+    // polyline
+    pathCtx.strokeStyle = servers[i].color;
+    pathCtx.lineWidth = 2;
+    pathCtx.beginPath();
+
+    for (let sIdx = 0; sIdx < pts.length; sIdx++) {
+      const t = pts[sIdx];
+      const u = (t - T_MIN) / (T_MAX - T_MIN);
+      const x = x0 + u * (x1 - x0);
+      const y = yForStep(sIdx);
+
+      if (sIdx === 0) pathCtx.moveTo(x, y);
+      else pathCtx.lineTo(x, y);
+    }
+    pathCtx.stroke();
+  }
 }
 
 function draw() {
@@ -514,6 +650,7 @@ if (draggingId !== null) {
 
     renderDistances();
     renderTable();
+    drawPaths();
     }
 
     }
@@ -537,6 +674,7 @@ function applyK() {
 
     updatePills(k);
     setServers(k);
+    drawPaths();
     resizeCanvas();
 }
 
