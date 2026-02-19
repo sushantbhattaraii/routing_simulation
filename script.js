@@ -366,7 +366,7 @@ const maxSteps = moveHistory.reduce((m, arr) => Math.max(m, arr.length), 0);
 
 // Header
 let html = '<thead><tr>';
-html += '<th>timestep (t)</th>';
+html += '<th>timestep (α)</th>';
 for (let i = 0; i < k; i++) {
     const label = (i === k - 1 && k > 5) ? 'Server K' : `Server ${i + 1}`;
     html += `<th>${label}</th>`;
@@ -376,7 +376,9 @@ html += '</tr></thead>';
 // Body
 html += '<tbody>';
 for (let step = 1; step <= maxSteps; step++) {
-    html += `<tr><td><b>${step}</b></td>`;
+    const timeVal = step * tickStep; // step * alpha
+    html += `<tr><td><b>${fmtVisible(timeVal)}</b></td>`;
+
     for (let i = 0; i < k; i++) {
     const v = moveHistory[i][step - 1];
     html += `<td>${(v === undefined) ? '—' : fmtVisible(v)}</td>`;
@@ -443,16 +445,28 @@ if (draggingId !== null) {
     const idx = s.id;
 
     // Total distance traveled during this drag (added cumulatively)
-    const moved = Math.abs(s.value - dragStartValue);
+    const start = dragStartValue;
+    const end = s.value;
+
+    const step = tickStep; // alpha
+    const moved = Math.abs(end - start);
+
     if (moved > 0) {
-        totalDistance[idx] = (totalDistance[idx] || 0) + moved;
+    // number of alpha-steps moved in this drag (should be integer because of snapping)
+    const nSteps = Math.round(moved / step);
+    const dir = (end >= start) ? 1 : -1;
 
-        // Per-server timestep: record the committed location
-        moveHistory[idx].push(s.value);
-
-        renderDistances();
-        renderTable();
+    for (let i = 1; i <= nSteps; i++) {
+        const pos = snapToStep(start + dir * i * step);
+        moveHistory[idx].push(pos); // timestep increases by 1 per alpha-step
     }
+
+    totalDistance[idx] = (totalDistance[idx] || 0) + nSteps * step;
+
+    renderDistances();
+    renderTable();
+    }
+
     }
 
     draggingId = null;
