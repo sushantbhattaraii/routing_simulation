@@ -22,6 +22,11 @@ const cardPill = document.getElementById('cardPill');
 // Panel elements
 const distanceList = document.getElementById('distanceList');
 const stateTable = document.getElementById('stateTable');
+const exportPdfBtn = document.getElementById('exportPdfBtn');
+const distanceTable = document.getElementById('distanceTable');
+exportPdfBtn.addEventListener('click', exportTablesToPDF);
+
+
 
 // Per-server state
 let servers = []; // { id, color, value } where value in [0, 18]
@@ -347,17 +352,21 @@ return (typeof formatFractionFromTime === 'function')
 }
 
 function renderDistances() {
-if (!distanceList) return;
-distanceList.innerHTML = servers.map((s, i) => {
+  if (!distanceTable) return;
+
+  let html = '<thead><tr><th>Server</th><th><center>Total Distance</center></th></tr></thead><tbody>';
+  for (let i = 0; i < servers.length; i++) {
     const label = (i === servers.length - 1 && servers.length > 5) ? 'Server K' : `Server ${i + 1}`;
-    return `
-    <div class="distRow">
-        <div><span class="swatch" style="background:${s.color}"></span><b>${label}</b></div>
-        <div><span class="muted">total distance</span>: <b>${fmtVisible(totalDistance[i] || 0)}</b></div>
-    </div>
-    `;
-}).join('');
+    html += `<tr>
+      <td>${label}</td>
+      <td><b><center>${fmtVisible(totalDistance[i] || 0)}</center></b></td>
+    </tr>`;
+  }
+  html += '</tbody>';
+
+  distanceTable.innerHTML = html;
 }
+
 
 function renderTable() {
 if (!stateTable) return;
@@ -366,7 +375,7 @@ const maxSteps = moveHistory.reduce((m, arr) => Math.max(m, arr.length), 0);
 
 // Header
 let html = '<thead><tr>';
-html += '<th>timestep (α)</th>';
+html += '<th>Timestep</th>';
 for (let i = 0; i < k; i++) {
     const label = (i === k - 1 && k > 5) ? 'Server K' : `Server ${i + 1}`;
     html += `<th>${label}</th>`;
@@ -389,6 +398,46 @@ html += '</tbody>';
 
 stateTable.innerHTML = html;
 }
+
+function exportTablesToPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+  const now = new Date();
+  const title = `Server Tables Export - ${now.toLocaleString()}`;
+
+  doc.setFontSize(14);
+  doc.text(title, 40, 40);
+
+  // Table 1: Server movement
+  doc.setFontSize(12);
+  doc.text('Server movement', 40, 70);
+
+  doc.autoTable({
+    html: '#distanceTable',
+    startY: 85,
+    theme: 'grid',
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0] }
+  });
+
+  // Table 2: Per-server time-step table
+  const yAfterFirst = doc.lastAutoTable.finalY + 22;
+  doc.text('Per-server time-step table', 40, yAfterFirst);
+
+  doc.autoTable({
+    html: '#stateTable',
+    startY: yAfterFirst + 12,
+    theme: 'grid',
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0] },
+    tableWidth: 'auto',
+  });
+
+  const fileStamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');
+  doc.save(`server-tables-${fileStamp}.pdf`);
+}
+
 
 
 // ======= Interaction (dragging knobs) =======

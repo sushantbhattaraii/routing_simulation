@@ -30,8 +30,12 @@
     <div id="statsDock">
         <div class="miniPanel">
             <div class="panelTitle">Server movement</div>
-            <div id="distanceList" class="distanceList"></div>
+            <div class="tableWrap">
+              <table id="distanceTable"></table>
+            </div>
+
         </div>
+        <button id="exportPdfBtn" type="button">Export tables PDF</button>
 
         <div class="miniPanel">
             <div class="panelTitle">Location of Server at time t (α steps)</div>
@@ -43,6 +47,8 @@
 
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
