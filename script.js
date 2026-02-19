@@ -366,7 +366,7 @@ const maxSteps = moveHistory.reduce((m, arr) => Math.max(m, arr.length), 0);
 
 // Header
 let html = '<thead><tr>';
-html += '<th>timestep</th>';
+html += '<th>timestep (t)</th>';
 for (let i = 0; i < k; i++) {
     const label = (i === k - 1 && k > 5) ? 'Server K' : `Server ${i + 1}`;
     html += `<th>${label}</th>`;
