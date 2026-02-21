@@ -1,6 +1,6 @@
 // ======= Config =======
 const T_MIN = 0;
-const T_MAX = 18;
+const T_MAX = 32;
 // Tick spacing depends on k: tickStep = alpha = 1/(2k-1)
 let tickStep = 1; // set to alpha when k is applied
 
