@@ -76,20 +76,20 @@ function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 // Convert time value -> x coordinate
 function xForTime(t) {
-    const w = canvas.width;
-    const x0 = layout.padL;
-    const x1 = w - layout.padR;
-    const u = (t - T_MIN) / (T_MAX - T_MIN);
-    return x0 + u * (x1 - x0);
+  const { w } = cssSize(canvas);
+  const x0 = layout.padL;
+  const x1 = w - layout.padR;
+  const u = (t - T_MIN) / (T_MAX - T_MIN);
+  return x0 + u * (x1 - x0);
 }
 
 // Convert x coordinate -> time value
 function timeForX(x) {
-    const w = canvas.width;
-    const x0 = layout.padL;
-    const x1 = w - layout.padR;
-    const u = (x - x0) / (x1 - x0);
-    return T_MIN + clamp(u, 0, 1) * (T_MAX - T_MIN);
+  const { w } = cssSize(canvas);
+  const x0 = layout.padL;
+  const x1 = w - layout.padR;
+  const u = (x - x0) / (x1 - x0);
+  return T_MIN + clamp(u, 0, 1) * (T_MAX - T_MIN);
 }
 
 // Snap a time value to the nearest multiple of tickStep (= alpha)
@@ -222,15 +222,15 @@ function resizeCanvas() {
 
 // ======= Drawing =======
 function clear() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const { w, h } = cssSize(canvas);
+    ctx.clearRect(0, 0, w, h);
     // background
     ctx.fillStyle = 'rgba(255,255,255,0)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 function drawAxis() {
-    const w = canvas.width;
-    const h = canvas.height;
+    const { w, h } = cssSize(canvas);
     const x0 = layout.padL;
     const x1 = w - layout.padR;
 
@@ -284,7 +284,7 @@ function drawAxis() {
 }
 
 function drawServerLine(server, idx) {
-    const w = canvas.width;
+    const { w } = cssSize(canvas);
     const x0 = layout.padL;
     const x1 = w - layout.padR;
     const y = yForServerIndex(idx);
@@ -476,7 +476,8 @@ function draw() {
     ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText('Timeline 0–18 (unit tick spacing = 1). Drag any colored knob to move that server along its line.', layout.padL, canvas.height - 14);
+    const { h } = cssSize(canvas);
+    ctx.fillText('', layout.padL, h - 14);
 }
 
 // ======= Stats rendering =======
@@ -678,12 +679,27 @@ function applyK() {
     resizeCanvas();
 }
 
+function cssSize(el) {
+  const dpr = window.devicePixelRatio || 1;
+  return { w: el.width / dpr, h: el.height / dpr };
+}
+
 applyBtn.addEventListener('click', applyK);
 kInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') applyK();
 });
 
 // ======= Init =======
+
+let lastDPR = window.devicePixelRatio || 1;
+setInterval(() => {
+  const dpr = window.devicePixelRatio || 1;
+  if (Math.abs(dpr - lastDPR) > 1e-6) {
+    lastDPR = dpr;
+    resizeCanvas();
+  }
+}, 250);
+
 const k0 = parseInt(kInput.value, 10) || 1;
 const { alpha: alpha0 } = computeAlphaBeta(k0);
 tickStep = alpha0;
